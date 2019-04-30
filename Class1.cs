@@ -11,19 +11,24 @@ namespace EmguCudaTest
 {
     class MyBlob
     {
+        public String name { get; set; }
         List<Point> points;
         List<Point> vectors;
-        public String name { get; set; }
+        List<Point> vectorsScaled;
         public bool found { get; set; }
+        public int lastNotFound { get; set; }
 
         public MyBlob(Point p, String name)
         {
             points = new List<Point>();
             vectors = new List<Point>();
-            points.Add(p);
+            vectorsScaled = new List<Point>();
             vectors.Add(new Point(0, 0));
+            vectorsScaled.Add(new Point(0, 0));
+            points.Add(p);
             this.name = name;
             this.found = true;
+            this.lastNotFound = 0;
         }
 
         public void Smooth(int val = 3)
@@ -42,6 +47,22 @@ namespace EmguCudaTest
             points.Add(tmp);
         }
 
+        public void SmoothVector(int val = 3)
+        {
+            int amount = 0;
+            int sumX = 0;
+            int sumY = 0;
+            for (int i = vectors.Count - 1; i >= 0 && i >= vectors.Count - 1 - val; i--)
+            {
+                sumX += vectors[i].X;
+                sumY += vectors[i].Y;
+                amount++;
+            }
+            Point tmp = new Point(sumX / amount, sumY / amount);
+            vectors.RemoveAt(points.Count - 1);
+            vectors.Add(tmp);
+        }
+
         public Point LastPoint()
         {
             return points[points.Count - 1];
@@ -52,6 +73,11 @@ namespace EmguCudaTest
             return vectors[vectors.Count - 1];
         }
 
+        public Point LastVectorScaled()
+        {
+            return vectorsScaled[vectorsScaled.Count - 1];
+        }
+
         public Point subtractPoints(Point p1, Point p2)
         {
             return new Point(p1.X - p2.X, p1.Y - p2.Y);
@@ -60,16 +86,34 @@ namespace EmguCudaTest
         public void addPoint(Point p)
         {
             Point vectorPoint = subtractPoints(p, LastPoint());
-            ScalePoint(vectorPoint, 50);
+
             vectors.Add(vectorPoint);
+            vectorsScaled.Add(ScalePoint(vectorPoint, 50));
+            //SmoothVector();
+
             points.Add(p);
+
             this.found = true;
         }
 
-        public void ScalePoint(Point p, int scalar)
+        private Point ScalePoint(Point p, int scalar)
         {
             p.X *= scalar;
             p.Y *= scalar;
+            return p;
+        }
+
+        public Point PredictPoint()
+        {
+            Point predictedPoint = LastPoint();
+
+            // Make better smoothing
+            //SmoothVector(10);
+
+            predictedPoint.X += LastVector().X;
+            predictedPoint.Y += LastVector().Y;
+
+            return predictedPoint;
         }
     }
 
@@ -94,7 +138,7 @@ namespace EmguCudaTest
                     if (distance(blob.LastPoint(), point) < 1000 && blob.found == false)
                     {
                         blob.addPoint(point);
-                        blob.Smooth();
+                        //blob.Smooth();
                     }
                     else if(blob.found == false)
                     {
@@ -108,7 +152,6 @@ namespace EmguCudaTest
                     index++;
                     anyBlobFound = true;
                 }
-                
             }
         }
 
@@ -152,6 +195,13 @@ namespace EmguCudaTest
             {
                 if (blobs[i].found == true)
                 {
+                    blobsToSave.Add(blobs[i]);
+                    blobs[i].lastNotFound = 0;
+                }
+                else if(blobs[i].lastNotFound < 10)
+                {
+                    blobs[i].lastNotFound++;
+                    blobs[i].addPoint(blobs[i].PredictPoint());
                     blobsToSave.Add(blobs[i]);
                 }
             }

@@ -45,6 +45,8 @@ namespace EmguCudaTest
 
         BlobList blobList = new BlobList();
 
+        int indexFrame = 0;
+
         private void ProcessFrame(object sender, EventArgs e)
         {
             if (_capture != null && _capture.Ptr != IntPtr.Zero)
@@ -93,6 +95,8 @@ namespace EmguCudaTest
                 imageBox2.Image = mask;
 
                 grayImage.Dispose();
+
+                indexFrame++;
             }
         }
 
@@ -105,7 +109,7 @@ namespace EmguCudaTest
             cudaBgMOG2 = new CudaBackgroundSubtractorMOG2();
 
             //blobDetector = new CvBlobDetector();
-            //param = new SimpleBlobDetectorParams();
+            //SimpleBlobDetectorParams param = new SimpleBlobDetectorParams();
             //param.MinThreshold = 10;
             //param.MaxThreshold = 255;
             //param.FilterByArea = true;
@@ -114,13 +118,14 @@ namespace EmguCudaTest
             //blobDetector = new SimpleBlobDetector(param);
 
             _capture.ImageGrabbed += ProcessFrame;
+            _capture.SetCaptureProperty(Emgu.CV.CvEnum.CapProp.Fps, 10);
+
             frame = new Mat();
             gray = new Mat();
             outSub = new Mat();
             gpuFrame = new GpuMat();
             gpuSub = new GpuMat();
             mask = new Image<Gray, byte>(_capture.Height, _capture.Width, new Gray(0));
-            //mask.SetTo(new MCvScalar(0));
 
             if (_capture != null)
             {
@@ -141,6 +146,11 @@ namespace EmguCudaTest
         }
 
         private void button1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button1_Click_1(object sender, EventArgs e)
         {
 
         }
